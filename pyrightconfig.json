@@ -1,0 +1,5 @@
+{
+  "include": ["km3disp", "tests"],
+  "extraPaths": ["."],
+  "reportMissingImports": "warning"
+}

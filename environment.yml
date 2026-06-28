@@ -1,0 +1,21 @@
+# Clean, dedicated conda environment for the km3disp displacement-modeling work.
+# Create with:  mamba env create -f environment.yml   (lands in the lab envs dir)
+# Update with:  mamba env update -f environment.yml --prune
+#
+# Intentionally minimal: the core package, the proxy study, and the figures need
+# only numpy/pandas/pyarrow/matplotlib. The heavyweight Phase-6 pipeline
+# (Prometheus simulation + GraphNeT/DynEdge training) runs in the graphnet env,
+# not here.
+name: km3disp
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - pandas
+  - pyarrow
+  - matplotlib-base
+  - pytest
+  - pip
+  - pip:
+      - -e .
