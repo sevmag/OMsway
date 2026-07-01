@@ -15,6 +15,7 @@ dependencies:
   - pandas
   - pyarrow
   - matplotlib-base
+  - plotly
   - pytest
   - pip
   - pip:

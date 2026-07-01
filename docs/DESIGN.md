@@ -298,6 +298,7 @@ km3disp/
   displace.py    apply a current field to all 115 DUs                    [Phase 5, done]
   io.py          emit GraphNeT parquet + bit-synced Prometheus geometry  [Phase 5, done]
   study.py       displacement sweep + GraphNeT hook + proxy reco study   [Phase 6, done]
+  viz.py         interactive plotly 3-D viewer of displaced configs      [tooling]
 ```
 
 ---

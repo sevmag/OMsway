@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "pandas", "pyarrow"]
 
 [project.optional-dependencies]
-plot = ["matplotlib"]
+plot = ["matplotlib", "plotly"]
 
 [tool.setuptools]
 packages = ["km3disp"]

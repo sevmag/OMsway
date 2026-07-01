@@ -74,7 +74,8 @@ Then, from the project root:
 ```
 python -m pytest                 # tests
 python -m km3disp.validate       # Phase-3 validation report
-python scripts/run_study.py      # Phase-6 study -> data/study/proxy_results.csv + figure
+python scripts/run_study.py          # Phase-6 study -> data/study/proxy_results.csv + figure
+python scripts/make_realizations.py  # water-sway realizations -> interactive 3-D plotly HTML
 ```
 
 The package itself is pure numpy/pandas/pyarrow (matplotlib only for figures) and
