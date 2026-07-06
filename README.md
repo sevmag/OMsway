@@ -3,6 +3,8 @@
 **Model how the strings of a water-based neutrino telescope sway under sea
 currents, and generate the displaced detector geometries that result.**
 
+<img src="art/sway.gif" align="right" width="170" alt="Stylized animation of ARCA's strings swaying in a traveling-wave current">
+
 Water Cherenkov neutrino telescopes (KM3NeT/ARCA & ORCA, P-ONE, TRIDENT) are
 built from long, near-vertical strings of optical modules, each anchored to the
 seabed and held up by a buoyant float. A horizontal sea current drags on the
@@ -11,16 +13,14 @@ modules are pushed downstream — by an amount that grows with height up the
 string and with the square of the current speed. On ARCA's ~690 m strings this
 reaches tens of metres.
 
-<p align="center">
-  <img src="art/sway.gif" alt="ARCA's strings swaying under a traveling-wave current" width="340">
-</p>
-
-<sub><em>Illustrative render (see <a href="art/"><code>art/</code></a>): ARCA's strings bending as a stylized traveling-wave current sweeps across, coloured by module displacement. Decorative — the physics and validation live in <a href="scripts/"><code>scripts/</code></a>.</em></sub>
-
 Reconstruction and simulation frameworks usually assume the detector geometry is
 static and perfectly known. OMsway computes the real, current-driven shape of
 each string and produces the displaced module positions, so you can study how
 that mismatch affects event reconstruction.
+
+<sub><em>(Animation, right: a stylized decorative render — see <a href="art/"><code>art/</code></a>; the physics and validation live in <a href="scripts/"><code>scripts/</code></a>.)</em></sub>
+
+<br clear="all">
 
 ## The physics
 
