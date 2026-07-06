@@ -79,15 +79,21 @@ def figure(line, pos, off, cmax, ranges, aspect):
     return fig
 
 
-def hcrop(images, margin=14):
-    """Crop every RGBA frame to the same horizontal content extent (by alpha)."""
-    x0, x1 = 10**9, -1
+def crop_and_pad(images, margin=10, hpad=48):
+    """Crop RGBA frames tight to the detector (by alpha, same box for every frame),
+    then add transparent horizontal padding so wrapping text can't touch it."""
+    alpha = np.stack([np.asarray(im)[:, :, 3] for im in images])  # (frames, H, W)
+    rows = np.where(alpha.any(axis=(0, 2)))[0]
+    cols = np.where(alpha.any(axis=(0, 1)))[0]
+    y0, y1 = max(0, rows[0] - margin), min(images[0].height, rows[-1] + margin + 1)
+    x0, x1 = max(0, cols[0] - margin), min(images[0].width, cols[-1] + margin + 1)
+    out = []
     for im in images:
-        cols = np.where(np.asarray(im)[:, :, 3].any(axis=0))[0]
-        if len(cols):
-            x0, x1 = min(x0, int(cols[0])), max(x1, int(cols[-1]))
-    x0, x1 = max(0, x0 - margin), min(images[0].width, x1 + margin + 1)
-    return [im.crop((x0, 0, x1, im.height)) for im in images]
+        c = im.crop((x0, y0, x1, y1))
+        canvas = Image.new("RGBA", (c.width + 2 * hpad, c.height), (0, 0, 0, 0))
+        canvas.paste(c, (hpad, 0))
+        out.append(canvas)
+    return out
 
 
 def save_transparent_gif(frames, out, duration=42):
@@ -141,7 +147,7 @@ def main() -> None:
         imgs.append(Image.open(io.BytesIO(png)).convert("RGBA"))
         if (k + 1) % 15 == 0:
             print(f"rendered {k + 1}/{nframes}")
-    save_transparent_gif(hcrop(imgs), out)
+    save_transparent_gif(crop_and_pad(imgs), out)
     print("wrote", out)
 
 

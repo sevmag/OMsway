@@ -3,7 +3,7 @@
 **Model how the strings of a water-based neutrino telescope sway under sea
 currents, and generate the displaced detector geometries that result.**
 
-<img src="art/sway.gif" align="right" width="40%" hspace="24" vspace="6" alt="Stylized animation of ARCA's strings swaying in a traveling-wave current">
+<img src="art/sway.gif" align="right" width="40%" alt="Stylized animation of ARCA's strings swaying in a traveling-wave current">
 
 Water Cherenkov neutrino telescopes (KM3NeT/ARCA & ORCA, P-ONE, TRIDENT) are
 built from long, near-vertical strings of optical modules, each anchored to the
