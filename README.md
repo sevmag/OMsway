@@ -11,6 +11,12 @@ modules are pushed downstream — by an amount that grows with height up the
 string and with the square of the current speed. On ARCA's ~690 m strings this
 reaches tens of metres.
 
+<p align="center">
+  <img src="art/sway.gif" alt="ARCA's strings swaying under a traveling-wave current" width="340">
+</p>
+
+<sub><em>Illustrative render (see <a href="art/"><code>art/</code></a>): ARCA's strings bending as a stylized traveling-wave current sweeps across, coloured by module displacement. Decorative — the physics and validation live in <a href="scripts/"><code>scripts/</code></a>.</em></sub>
+
 Reconstruction and simulation frameworks usually assume the detector geometry is
 static and perfectly known. OMsway computes the real, current-driven shape of
 each string and produces the displaced module positions, so you can study how
@@ -18,26 +24,50 @@ that mismatch affects event reconstruction.
 
 ## The physics
 
-Each string is treated as an inextensible mooring line in static equilibrium,
-parameterised by arc length `s` from the seabed anchor (`s = 0`) to the buoy
-(`s = L`). At any cut, the part of the string above it is held by the tension
-there, the net **buoyancy** `V(s)` of everything above (acting upward), and the
-horizontal **drag** `H(s)` of everything above:
+A detector string is modelled as a **flexible, inextensible mooring line**: it
+carries tension but has no bending stiffness, so its shape is fixed entirely by
+the balance of forces along it. One end is anchored to the seabed; the other is
+pulled taut by a buoyant float.
+
+Parameterise the line by arc length `s`, from the anchor (`s = 0`) up to the buoy
+(`s = L`). Cut it at any `s`; the portion above must be in static equilibrium
+under three forces — the tension at the cut, the net **buoyancy** of everything
+above (buoyancy minus weight, acting upward), and the horizontal **drag** the
+current exerts on everything above. Since the line is tension-only, its tension
+points along the local tangent, which gives the shape directly:
 
 ```
-V(s) = Σ  buoyancy of elements above s              (upward)
-H(s) = Σ  ½·C_d·ρ·A·|u|·u   of elements above s      (horizontal, from drag)
-tangent(s) = (H_x, H_y, V) / |(H_x, H_y, V)|
-shape       = anchor + ∫ tangent ds
+V(s) = Σ_{above s}  W_j                     net buoyancy above s   (upward, N)
+H(s) = Σ_{above s}  ½·C_d·ρ·A_j·|u|·u        drag above s           (horizontal, N)
+t(s) = (H_x, H_y, V) / |(H_x, H_y, V)|       unit tangent of the line
+r(s) = anchor + ∫₀ˢ t(s') ds'               the displaced shape
 ```
 
-Optical modules and the buoy are point elements; the cable is a distributed one.
-Drag is quadratic in the local current `u`, and because a current can turn with
-depth, `H` is a full 2-D vector — so a string can bow *out of a single vertical
-plane* (directional shear). The current felt by each element depends on its own
-(unknown) displaced position, so the shape is found by fixed-point iteration
-starting from the straight string. The model follows the ANTARES line-shape
-approach (see [References](#references)).
+**Elements.** Optical modules and the buoy are **point** elements — each with a
+net buoyancy `W` (N) and a drag factor `f = ½·C_d·ρ·A` set by its frontal area
+`A` and drag coefficient `C_d`. The cable is a **distributed** element, adding
+drag and net buoyancy *per unit length*. `ρ` is the seawater density, `u` the
+local current velocity.
+
+**Quadratic, directional drag.** Drag goes as `|u|·u` — quadratic in speed, so a
+string's deflection grows roughly as `v²` in the gentle regime and with height up
+the line. Because the current is a vector that may rotate with depth, `H` is a
+full horizontal vector: a string in a directionally-sheared current bows *out of
+a single vertical plane*.
+
+**Large-angle and coupled.** No small-angle approximation is used — the tangent
+is normalised exactly, so the model stays valid when a ~700 m string leans over
+by tens of metres. The drag on each element depends on the current at that
+element's own (displaced, initially unknown) position, so the shape is found by
+fixed-point iteration starting from the straight, vertical string.
+
+**Limiting check.** When the current is weak the line barely tilts, the tension
+is essentially the constant top buoyancy `B`, and the shape collapses to the
+closed-form parabola `r = q·L²/(2B)` for a uniform drag load `q` per unit length.
+The solver reproduces this exactly — one of the checks in `scripts/validate.py`.
+
+The approach follows the ANTARES line-shape / detector-positioning model
+([arXiv:1202.3894](https://arxiv.org/abs/1202.3894)), also used by KM3NeT.
 
 ## Installation
 
@@ -148,5 +178,3 @@ quadratic (`v²`) scaling of deflection with current speed.
   benchmark string deflection.
 - [Prometheus](https://github.com/Harvard-Neutrino/prometheus) — the simulation
   package whose `.geo` detector files OMsway reads and writes.
-
-Design notes and the physics derivation are in [`docs/DESIGN.md`](docs/DESIGN.md).
