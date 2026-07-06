@@ -30,7 +30,7 @@ ARCA_GEO = Path(
     "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel"
     "/prometheus/resources/geofiles/arca.geo"
 )
-BG = "white"
+BG = "rgba(0,0,0,0)"  # transparent, so it reads on light and dark backgrounds
 CAMERA = dict(eye=dict(x=1.15, y=1.02, z=0.42))
 # matplotlib "winter" (blue -> green), dropping the bluest 15% (sample t in [0.15, 1])
 _w = matplotlib.colormaps["winter"]
@@ -80,14 +80,26 @@ def figure(line, pos, off, cmax, ranges, aspect):
 
 
 def hcrop(images, margin=14):
-    """Crop every frame to the same horizontal content extent (tighter sides)."""
+    """Crop every RGBA frame to the same horizontal content extent (by alpha)."""
     x0, x1 = 10**9, -1
     for im in images:
-        cols = np.where((np.asarray(im)[:, :, :3] < 245).any(axis=(0, 2)))[0]
+        cols = np.where(np.asarray(im)[:, :, 3].any(axis=0))[0]
         if len(cols):
             x0, x1 = min(x0, int(cols[0])), max(x1, int(cols[-1]))
     x0, x1 = max(0, x0 - margin), min(images[0].width, x1 + margin + 1)
     return [im.crop((x0, 0, x1, im.height)) for im in images]
+
+
+def save_transparent_gif(frames, out, duration=42):
+    """Assemble RGBA frames into a looping GIF with a transparent background."""
+    palettes = []
+    for im in frames:
+        p = im.convert("RGB").convert("P", palette=Image.Palette.ADAPTIVE, colors=255,
+                                      dither=Image.Dither.NONE)
+        p.paste(255, im.split()[3].point(lambda a: 255 if a < 128 else 0))  # 1-bit alpha
+        palettes.append(p)
+    palettes[0].save(out, save_all=True, append_images=palettes[1:], duration=duration,
+                     loop=0, transparency=255, disposal=2)
 
 
 def main() -> None:
@@ -126,11 +138,10 @@ def main() -> None:
     imgs = []
     for k, (line, pos, off) in enumerate(frames):
         png = figure(line, pos, off, cmax, ranges, aspect).to_image(format="png", width=900, height=560)
-        imgs.append(Image.open(io.BytesIO(png)).convert("RGB"))
+        imgs.append(Image.open(io.BytesIO(png)).convert("RGBA"))
         if (k + 1) % 15 == 0:
             print(f"rendered {k + 1}/{nframes}")
-    imgs = hcrop(imgs)
-    imgs[0].save(out, save_all=True, append_images=imgs[1:], duration=42, loop=0, optimize=True)
+    save_transparent_gif(hcrop(imgs), out)
     print("wrote", out)
 
 
