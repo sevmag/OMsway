@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "km3disp"
+name = "omsway"
 version = "0.1.0"
-description = "Displacement of KM3NeT optical modules under sea currents"
+description = "Sway of moored optical-module lines in neutrino telescopes under sea currents"
 requires-python = ">=3.10"
 dependencies = ["numpy", "pandas", "pyarrow"]
 
@@ -13,4 +13,4 @@ dependencies = ["numpy", "pandas", "pyarrow"]
 plot = ["matplotlib", "plotly"]
 
 [tool.setuptools]
-packages = ["km3disp"]
+packages = ["omsway"]

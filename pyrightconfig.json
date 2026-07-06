@@ -1,5 +1,6 @@
 {
-  "include": ["km3disp", "tests"],
+  "include": ["omsway", "tests"],
   "extraPaths": ["."],
-  "reportMissingImports": "warning"
+  "reportMissingImports": "warning",
+  "reportUnusedParameter": "none"
 }

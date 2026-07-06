@@ -1,4 +1,4 @@
-# Clean, dedicated conda environment for the km3disp displacement-modeling work.
+# Clean, dedicated conda environment for the omsway displacement-modeling work.
 # Create with:  mamba env create -f environment.yml   (lands in the lab envs dir)
 # Update with:  mamba env update -f environment.yml --prune
 #
@@ -6,7 +6,7 @@
 # only numpy/pandas/pyarrow/matplotlib. The heavyweight Phase-6 pipeline
 # (Prometheus simulation + GraphNeT/DynEdge training) runs in the graphnet env,
 # not here.
-name: km3disp
+name: omsway
 channels:
   - conda-forge
 dependencies:

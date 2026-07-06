@@ -1,4 +1,4 @@
-"""Put the project root on ``sys.path`` so ``import km3disp`` works in tests and
+"""Put the project root on ``sys.path`` so ``import omsway`` works in tests and
 scripts without an installed package (run from the project root)."""
 
 import os
