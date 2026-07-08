@@ -85,13 +85,12 @@ class Solver:
         current: CurrentModel,
         *,
         time: float = 0.0,
-        apply: bool = True,
     ) -> list[StringShape]:
         """Displace every string; each samples the current at its own position.
 
-        With ``apply`` (the default) the displaced positions and the local rope
-        tangent (each module's ``axis``, i.e. its tilt) are written back onto the
-        modules, so the geometry then reports the displaced state
+        The displaced positions and the local rope tangent (each module's
+        ``axis``, i.e. its tilt) are written back onto the modules, so the
+        geometry then reports the displaced state
         (``positions``/``displacements``/``to_prometheus_geo``). Torsion is left
         untouched -- it is a separate degree of freedom the solve does not
         determine. Arc lengths are read from the geometry's nominal baseline, so
@@ -104,12 +103,9 @@ class Solver:
             n = string.n_modules
             shape = self.solve_string(string, current, nominal=nominal[i : i + n], time=time)
             i += n
-            if apply:
-                for m, p, a in zip(
-                    string.modules, shape.module_positions, shape.module_axes
-                ):
-                    m.position = p
-                    m.axis = a
+            for m, p, a in zip(string.modules, shape.module_positions, shape.module_axes):
+                m.position = p
+                m.axis = a
             shapes.append(shape)
         return shapes
 
