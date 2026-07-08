@@ -46,11 +46,72 @@ class Module(ABC):
     each concrete device free to store or compute them (e.g. from a radius): net
     ``buoyancy`` (up positive), drag coefficient ``c_w``, and frontal ``area``,
     which enter the drag as ``F = 0.5 c_w rho A |u| u``.
+
+    A module also carries its orientation as two independent degrees of freedom:
+    ``axis`` is the unit vector its symmetry axis points along (upright
+    ``(0, 0, 1)`` by default), and ``torsion`` is the roll about that axis
+    (radians). The sway solver sets ``axis`` from the local rope tangent (the
+    tilt); ``torsion`` (the DOM heading/yaw) is supplied separately, since a
+    current exerts no torque about the axis of a symmetric module. ``tilt`` and
+    ``tilt_azimuth`` expose ``axis`` as angles.
     """
 
-    def __init__(self, module_id: int, position: np.ndarray):
+    def __init__(
+        self,
+        module_id: int,
+        position: np.ndarray,
+        *,
+        axis: np.ndarray | None = None,
+        torsion: float = 0.0,
+    ):
         self.module_id = module_id
         self.position = np.asarray(position, float)
+        self.axis = np.array([0.0, 0.0, 1.0]) if axis is None else self._unit(axis)
+        self.torsion = float(torsion)
+
+    @staticmethod
+    def _unit(v: np.ndarray) -> np.ndarray:
+        """Return ``v`` normalised to a unit vector; error on the zero vector."""
+        v = np.asarray(v, float)
+        norm = np.linalg.norm(v)
+        if norm == 0.0:
+            raise ValueError("axis must be a non-zero vector")
+        return v / norm
+
+    @staticmethod
+    def axis_from_angles(tilt: float, azimuth: float) -> np.ndarray:
+        """Unit axis for a polar ``tilt`` from vertical leaning toward ``azimuth`` (radians)."""
+        s = np.sin(tilt)
+        return np.array([s * np.cos(azimuth), s * np.sin(azimuth), np.cos(tilt)])
+
+    @property
+    def tilt(self) -> float:
+        """Polar tilt of ``axis`` away from vertical (+z), radians."""
+        return float(np.arccos(np.clip(self.axis[2], -1.0, 1.0)))
+
+    @property
+    def tilt_azimuth(self) -> float:
+        """Azimuth of the lean (from +x toward +y), radians; ``0`` when upright."""
+        return float(np.arctan2(self.axis[1], self.axis[0]))
+
+    def set_orientation(
+        self,
+        *,
+        tilt: float | None = None,
+        tilt_azimuth: float | None = None,
+        torsion: float | None = None,
+    ) -> None:
+        """Set orientation from angles (radians).
+
+        ``tilt`` and ``tilt_azimuth`` set ``axis`` and must be given together;
+        ``torsion`` sets the roll. Any argument left ``None`` is unchanged.
+        """
+        if (tilt is None) != (tilt_azimuth is None):
+            raise ValueError("tilt and tilt_azimuth must be set together")
+        if tilt is not None and tilt_azimuth is not None:
+            self.axis = self.axis_from_angles(tilt, tilt_azimuth)
+        if torsion is not None:
+            self.torsion = float(torsion)
 
     @property
     @abstractmethod
@@ -91,9 +152,16 @@ class SphericalOM(Module):
     _SPHERE_CD = 0.47  # smooth-sphere drag coefficient, subcritical Reynolds
 
     def __init__(
-        self, module_id: int, position: np.ndarray, radius: float, buoyancy: float
+        self,
+        module_id: int,
+        position: np.ndarray,
+        radius: float,
+        buoyancy: float,
+        *,
+        axis: np.ndarray | None = None,
+        torsion: float = 0.0,
     ):
-        super().__init__(module_id, position)
+        super().__init__(module_id, position, axis=axis, torsion=torsion)
         self.radius = float(radius)
         self._buoyancy = float(buoyancy)
 

@@ -52,6 +52,7 @@ class StringShape:
     s: np.ndarray  # (n_nodes,) arc-length grid
     positions: np.ndarray  # (n_nodes, 3) rope shape, anchor to buoy
     module_positions: np.ndarray  # (n_modules, 3) displaced, in string.modules order
+    module_axes: np.ndarray  # (n_modules, 3) unit rope tangent at each module (its tilt)
     converged: bool
     n_iter: int
 
@@ -88,10 +89,13 @@ class Solver:
     ) -> list[StringShape]:
         """Displace every string; each samples the current at its own position.
 
-        With ``apply`` (the default) the displaced positions are written back onto
-        the modules, so the geometry then reports the displaced state
-        (``positions``/``displacements``/``to_prometheus_geo``). Arc lengths are
-        read from the geometry's nominal baseline, so re-solving stays correct.
+        With ``apply`` (the default) the displaced positions and the local rope
+        tangent (each module's ``axis``, i.e. its tilt) are written back onto the
+        modules, so the geometry then reports the displaced state
+        (``positions``/``displacements``/``to_prometheus_geo``). Torsion is left
+        untouched -- it is a separate degree of freedom the solve does not
+        determine. Arc lengths are read from the geometry's nominal baseline, so
+        re-solving stays correct.
         """
         shapes: list[StringShape] = []
         nominal = geometry.unperturbed_positions
@@ -101,8 +105,11 @@ class Solver:
             shape = self.solve_string(string, current, nominal=nominal[i : i + n], time=time)
             i += n
             if apply:
-                for m, p in zip(string.modules, shape.module_positions):
+                for m, p, a in zip(
+                    string.modules, shape.module_positions, shape.module_axes
+                ):
                     m.position = p
+                    m.axis = a
             shapes.append(shape)
         return shapes
 
@@ -134,6 +141,7 @@ class Solver:
         vertical = _above(w_pt, arc, s) + w_rope * (length - s)
 
         positions = anchor + np.column_stack([np.zeros_like(s), np.zeros_like(s), s])
+        tangent = np.tile([0.0, 0.0, 1.0], (len(s), 1))  # straight-up seed
         converged, n_iter = False, 0
         for n_iter in range(1, self.max_iter + 1):
             u = current(positions, time)[:, :2]
@@ -156,11 +164,20 @@ class Solver:
 
         module_positions = np.empty((len(string.modules), 3))
         module_positions[order] = _interp(arc, s, positions)
+
+        # A module is clamped to the rope, so its symmetry axis is the local unit
+        # tangent (pointing anchor->buoy). Interpolating unit tangents shortens
+        # them, so renormalise after sampling at the module arc lengths.
+        module_axes = np.empty((len(string.modules), 3))
+        module_axes[order] = _interp(arc, s, tangent)
+        module_axes /= np.maximum(np.linalg.norm(module_axes, axis=1), 1e-12)[:, None]
+
         return StringShape(
             string_id=string.string_id,
             s=s,
             positions=positions,
             module_positions=module_positions,
+            module_axes=module_axes,
             converged=converged,
             n_iter=n_iter,
         )
