@@ -32,6 +32,7 @@ ARCA_GEO = Path(
 )
 BG = "rgba(0,0,0,0)"  # transparent, so it reads on light and dark backgrounds
 CAMERA = dict(eye=dict(x=1.15, y=1.02, z=0.42))
+SCALE = 2  # device-pixel multiplier: same composition, higher-resolution output
 # matplotlib "winter" (blue -> green), dropping the bluest 15% (sample t in [0.15, 1])
 _w = matplotlib.colormaps["winter"]
 WINTER = [[i / 31, "rgb({},{},{})".format(*(int(255 * c) for c in _w(0.15 + 0.85 * i / 31)[:3]))]
@@ -143,11 +144,13 @@ def main() -> None:
 
     imgs = []
     for k, (line, pos, off) in enumerate(frames):
-        png = figure(line, pos, off, cmax, ranges, aspect).to_image(format="png", width=900, height=560)
+        png = figure(line, pos, off, cmax, ranges, aspect).to_image(
+            format="png", width=900, height=560, scale=SCALE
+        )
         imgs.append(Image.open(io.BytesIO(png)).convert("RGBA"))
         if (k + 1) % 15 == 0:
             print(f"rendered {k + 1}/{nframes}")
-    save_transparent_gif(crop_and_pad(imgs), out)
+    save_transparent_gif(crop_and_pad(imgs, margin=10 * SCALE, hpad=48 * SCALE), out)
     print("wrote", out)
 
 
