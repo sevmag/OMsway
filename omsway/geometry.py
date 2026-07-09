@@ -111,6 +111,31 @@ class Module(ABC):
         if torsion is not None:
             self.torsion = float(torsion)
 
+    @staticmethod
+    def _rodrigues(v: np.ndarray, axis: np.ndarray, angle: float) -> np.ndarray:
+        """Rotate ``v`` about unit ``axis`` by ``angle`` (radians)."""
+        c, s = np.cos(angle), np.sin(angle)
+        return v * c + np.cross(axis, v) * s + axis * (axis @ v) * (1.0 - c)
+
+    def reference_vector(self) -> np.ndarray:
+        """Unit body reference: ``+x`` carried through the tilt and torsion.
+
+        Upright and untorsioned it is ``+x``. The tilt -- the shortest-arc
+        rotation taking ``+z`` to ``axis`` -- carries it with the body, so it
+        stays orthogonal to ``axis``; ``torsion`` then rolls it about ``axis``.
+        This is the DOM heading marker the cable azimuth encodes.
+        """
+        z = np.array([0.0, 0.0, 1.0])
+        x = np.array([1.0, 0.0, 0.0])
+        k = np.cross(z, self.axis)
+        s = float(np.linalg.norm(k))
+        if s < 1e-12:  # axis is +/-z: no tilt rotation to apply to +x
+            r0 = x
+        else:
+            angle = np.arctan2(s, float(np.clip(self.axis[2], -1.0, 1.0)))
+            r0 = self._rodrigues(x, k / s, angle)
+        return self._rodrigues(r0, self.axis, self.torsion)
+
     @property
     @abstractmethod
     def kind(self) -> str:
@@ -432,6 +457,35 @@ class Geometry:
             strings.append(String(string_id, anchor, [*oms, b], cable))
         return cls(strings)
 
+    def _ppc_modules(self):
+        """Yield ``(string_id, dom_number, module)`` for the optical modules.
+
+        Numbered exactly as :meth:`to_prometheus_geo` -- per string, 0-based, buoys
+        excluded -- so the ``.geo``, ``cx.dat``, and ``dx.dat`` all share the DOM
+        identities PPC keys on. Fails loud on any non-buoy device that is not a
+        :class:`SphericalOM`, since the PPC writers rely on its ``radius``.
+        """
+        for s in self.strings:
+            n = 0
+            for m in s:
+                if m.kind == "buoy":
+                    continue
+                if not isinstance(m, SphericalOM):
+                    raise TypeError(
+                        f"PPC geometry output supports only SphericalOM optical modules; "
+                        f"string {s.string_id} carries a {type(m).__name__}"
+                    )
+                yield s.string_id, n, m
+                n += 1
+
+    @staticmethod
+    def _write_lines(path: str | Path, lines: list[str]) -> Path:
+        """Write ``lines`` (newline-joined, trailing newline) to ``path``."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines) + "\n")
+        return path
+
     def to_prometheus_geo(self, path: str | Path, *, medium: str = "water") -> Path:
         """Write the current module positions as a Prometheus ``.geo`` file.
 
@@ -449,18 +503,58 @@ class Geometry:
         if radius is not None:
             lines.append(f"DOM Radius [cm]:\t{radius * 100:g}")
         lines.append("### Modules ###")
-        for s in self.strings:
-            n = 0
-            for m in s:
-                if m.kind == "buoy":
-                    continue
-                x, y, z = m.position
-                lines.append(f"{x}\t{y}\t{z}\t{s.string_id}\t{n}")
-                n += 1
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("\n".join(lines) + "\n")
-        return path
+        for string_id, dom, m in self._ppc_modules():
+            x, y, z = m.position
+            lines.append(f"{x}\t{y}\t{z}\t{string_id}\t{dom}")
+        return self._write_lines(path, lines)
+
+    def to_cx_dat(self, path: str | Path) -> Path:
+        """Write ``cx.dat``: per-DOM orientation (tilt) vectors for PPC nextgen.
+
+        One whitespace row per optical module -- ``string dom  ax ay az  r`` --
+        giving the module ``axis`` (unit tilt vector). PPC reads the trailing ``r``
+        but ignores it, so the DOM radius stands in as a placeholder. Keys match
+        :meth:`to_prometheus_geo`.
+        """
+        lines = []
+        for string_id, dom, m in self._ppc_modules():
+            ax, ay, az = m.axis
+            r = m.radius
+            lines.append(f"{string_id}\t{dom}\t{ax:.6f} {ay:.6f} {az:.6f}\t{r:.4f}")
+        return self._write_lines(path, lines)
+
+    def to_dx_dat(self, path: str | Path) -> Path:
+        """Write ``dx.dat``: per-DOM cable azimuth (the torsion roll) for PPC nextgen.
+
+        One row per optical module -- ``string dom  azimuth_deg  r`` -- with the
+        module ``torsion`` wrapped to ``[0, 360)`` degrees (PPC treats a negative
+        azimuth as unset). PPC reads the trailing ``r`` but ignores it. Keys match
+        :meth:`to_prometheus_geo`.
+        """
+        lines = []
+        for string_id, dom, m in self._ppc_modules():
+            azimuth = np.degrees(m.torsion) % 360.0
+            r = m.radius
+            lines.append(f"{string_id}\t{dom}\t{azimuth:.4f}\t{r:.4f}")
+        return self._write_lines(path, lines)
+
+    def write_ppc_geometry(
+        self, directory: str | Path, *, geo_name: str = "geometry.geo", medium: str = "water"
+    ) -> dict[str, Path]:
+        """Write the full set of PPC geometry inputs into ``directory``.
+
+        Produces the displaced ``.geo`` (positions), ``cx.dat`` (per-DOM tilt
+        vectors) and ``dx.dat`` (per-DOM cable azimuth from the torsion) -- the
+        geometry PPC needs to place tilted, rotated modules. In a Prometheus run
+        the ``.geo`` is the geofile and ``cx.dat``/``dx.dat`` go in the
+        ``ppctables`` directory. Returns the three paths keyed ``geo``/``cx``/``dx``.
+        """
+        directory = Path(directory)
+        return {
+            "geo": self.to_prometheus_geo(directory / geo_name, medium=medium),
+            "cx": self.to_cx_dat(directory / "cx.dat"),
+            "dx": self.to_dx_dat(directory / "dx.dat"),
+        }
 
     def __len__(self) -> int:
         return len(self.strings)

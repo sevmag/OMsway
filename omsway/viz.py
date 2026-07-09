@@ -23,6 +23,7 @@ from .geometry import Geometry
 NOMINAL_COLOR = "grey"
 DISPLACED_COLOR = "cornflowerblue"
 AXIS_COLOR = "#e4572e"
+HEADING_COLOR = "#8a4fff"
 LINE_WIDTH = 3.0
 AXIS_WIDTH = 4.0
 MODULE_SIZE = 3.0
@@ -89,10 +90,11 @@ def plot(
 ) -> go.Figure:
     """3-D figure of the displaced geometry against its nominal baseline.
 
-    With ``show_axes`` each module carries a small arrow along its ``axis`` (the
-    solved tilt). ``axis_scale`` sets the arrow length as a fraction of the median
-    module spacing (so it reads at any detector scale); ``axis_length`` overrides
-    it with an absolute length in metres.
+    With ``show_axes`` each module carries two small arrows: one along its
+    ``axis`` (the solved tilt) and one along its heading -- the body ``+x``
+    reference carried through the tilt and rolled by the torsion. ``axis_scale``
+    sets the arrow length as a fraction of the median module spacing (so it reads
+    at any detector scale); ``axis_length`` overrides it with metres.
     """
     displaced = geometry.positions()
     nominal = geometry.unperturbed_positions
@@ -100,6 +102,7 @@ def plot(
 
     modules = [m for s in geometry.strings for m in s]
     axes = np.array([m.axis for m in modules])
+    headings = np.array([m.reference_vector() for m in modules])
     tilt_deg = np.degrees([m.tilt for m in modules])
     yaw_deg = np.degrees([m.torsion for m in modules])
 
@@ -123,18 +126,22 @@ def plot(
 
     if show_axes:
         length = _auto_axis_length(geometry, axis_scale) if axis_length is None else axis_length
-        ax_x, ax_y, ax_z = _polyline(_arrow_segments(displaced, axes, length))
-        fig.add_trace(
-            go.Scatter3d(
-                x=ax_x,
-                y=ax_y,
-                z=ax_z,
-                mode="lines",
-                hoverinfo="skip",
-                line=dict(color=AXIS_COLOR, width=AXIS_WIDTH),
-                name="tilt axis",
+        for vectors, color, name in (
+            (axes, AXIS_COLOR, "tilt axis"),
+            (headings, HEADING_COLOR, "heading"),
+        ):
+            gx, gy, gz = _polyline(_arrow_segments(displaced, vectors, length))
+            fig.add_trace(
+                go.Scatter3d(
+                    x=gx,
+                    y=gy,
+                    z=gz,
+                    mode="lines",
+                    hoverinfo="skip",
+                    line=dict(color=color, width=AXIS_WIDTH),
+                    name=name,
+                )
             )
-        )
 
     sid, mid = geometry.string_ids(), geometry.module_ids()
     fig.add_trace(
@@ -149,7 +156,14 @@ def plot(
                 color=offset,
                 colorscale="Viridis",
                 cmin=0.0,
-                colorbar=dict(title="displacement<br>[m]"),
+                colorbar=dict(
+                    title=dict(text="displacement<br>[m]", font=dict(size=11)),
+                    len=0.5,
+                    thickness=14,
+                    y=0.0,
+                    yanchor="bottom",
+                    tickfont=dict(size=10),
+                ),
             ),
             text=[
                 f"string {int(s)} · module {int(m)}<br>displacement {o:.1f} m"
@@ -170,9 +184,52 @@ def plot(
     return fig
 
 
-def write_html(fig: go.Figure, path: str | Path, *, standalone: bool = True) -> Path:
-    """Write an interactive HTML file; ``standalone`` embeds plotly.js for offline use."""
+def _toggle_controls(div_id: str, names: list[str]) -> str:
+    """A fixed checkbox panel that shows/hides traces by ``name`` via Plotly.restyle."""
+    boxes = "".join(
+        f'<label style="display:block;margin:2px 0;">'
+        f'<input type="checkbox" data-name="{n}" checked> {n}</label>'
+        for n in names
+    )
+    return f"""
+<div id="omsway-toggles" style="position:fixed;top:12px;left:12px;z-index:1000;
+     font:13px sans-serif;background:rgba(255,255,255,0.85);color:#222;
+     padding:6px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);">{boxes}</div>
+<script>
+(function () {{
+  var gd = document.getElementById("{div_id}");
+  document.querySelectorAll("#omsway-toggles input").forEach(function (cb) {{
+    cb.addEventListener("change", function () {{
+      var idx = [];
+      gd.data.forEach(function (t, i) {{ if (t.name === cb.dataset.name) idx.push(i); }});
+      Plotly.restyle(gd, {{visible: cb.checked ? true : false}}, idx);
+    }});
+  }});
+}})();
+</script>"""
+
+
+def write_html(
+    fig: go.Figure,
+    path: str | Path,
+    *,
+    standalone: bool = True,
+    toggles: tuple[str, ...] = ("tilt axis", "heading"),
+) -> Path:
+    """Write an interactive HTML file; ``standalone`` embeds plotly.js for offline use.
+
+    For each trace named in ``toggles`` that the figure contains, a checkbox is
+    added to a small panel that shows/hides that trace layer -- so the tilt-axis
+    and heading arrows can be switched off and on independently of the legend.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.write_html(str(path), include_plotlyjs=(True if standalone else "cdn"))
+    div_id = "omsway-plot"
+    html = fig.to_html(
+        include_plotlyjs=(True if standalone else "cdn"), full_html=True, div_id=div_id
+    )
+    present = [name for name in toggles if any(t.name == name for t in fig.data)]
+    if present:
+        html = html.replace("</body>", _toggle_controls(div_id, present) + "\n</body>", 1)
+    path.write_text(html)
     return path
