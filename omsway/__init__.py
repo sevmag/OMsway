@@ -1,6 +1,6 @@
 """omsway: displacement of KM3NeT optical modules under sea currents."""
 
-from . import currents, geometry, mechanics
+from . import currents, geometry, solver, torsion
 from .currents import CurrentModel, DepthProfileCurrent, UniformCurrent
 from .geometry import (
     Buoy,
@@ -11,7 +11,8 @@ from .geometry import (
     SphericalOM,
     String,
 )
-from .mechanics import Solver, StringShape
+from .solver import Solver, StringShape
+from .torsion import RandomScatter, TorsionModel
 
 __all__ = [
     "CurrentModel",
@@ -26,7 +27,10 @@ __all__ = [
     "CylindricalCable",
     "Solver",
     "StringShape",
+    "TorsionModel",
+    "RandomScatter",
     "currents",
     "geometry",
-    "mechanics",
+    "solver",
+    "torsion",
 ]

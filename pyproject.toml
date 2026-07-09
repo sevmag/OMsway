@@ -11,6 +11,13 @@ dependencies = ["numpy", "pandas", "pyarrow"]
 
 [project.optional-dependencies]
 plot = ["matplotlib", "plotly"]
+dev = ["pre-commit", "ruff"]
 
 [tool.setuptools]
 packages = ["omsway"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I"]  # sort imports (isort) on top of the default E/F rules

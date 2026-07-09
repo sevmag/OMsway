@@ -19,8 +19,7 @@ import numpy as np
 from omsway import Buoy, CylindricalCable, Geometry, Solver, UniformCurrent
 
 ARCA_GEO = Path(
-    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel"
-    "/prometheus/resources/geofiles/arca.geo"
+    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel/prometheus/resources/geofiles/arca.geo"
 )
 OUTDIR = Path(__file__).resolve().parent.parent / "data" / "displaced"
 SPEEDS_CM = (3, 6, 10, 15)

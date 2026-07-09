@@ -29,7 +29,10 @@ def _arca_like() -> String:
     """A single ~690 m ARCA-like string: 18 near-neutral OMs, a buoy, a cable."""
     anchor = np.array([0.0, 0.0, -3540.0])
     z = -3500.0 + 36.0 * np.arange(18)
-    oms = [SphericalOM(i, np.array([0.0, 0.0, zi]), radius=0.22, buoyancy=0.0) for i, zi in enumerate(z)]
+    oms = [
+        SphericalOM(i, np.array([0.0, 0.0, zi]), radius=0.22, buoyancy=0.0)
+        for i, zi in enumerate(z)
+    ]
     buoy = Buoy(1350.0, 0.8, 0.25, module_id=99, position=np.array([0.0, 0.0, z[-1] + 38.0]))
     return String(0, anchor, [*oms, buoy], CylindricalCable(0.05, -0.5, c_w=1.2))
 

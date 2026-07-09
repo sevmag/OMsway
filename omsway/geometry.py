@@ -26,9 +26,7 @@ STRING_COL = "sensor_string_id"
 SENSOR_COL = "sensor_id"
 
 # Known geometry tables (vertical-string detectors share this loader).
-GEOMETRY_TABLE_DIR = Path(
-    "/n/home12/smagel/data/graphnet/data/geometry_tables"
-)
+GEOMETRY_TABLE_DIR = Path("/n/home12/smagel/data/graphnet/data/geometry_tables")
 NAMED_GEOMETRIES = {
     "arca": GEOMETRY_TABLE_DIR / "nubench" / "flower_l.parquet",
     "orca": GEOMETRY_TABLE_DIR / "nubench" / "flower_s.parquet",
@@ -267,9 +265,7 @@ class CylindricalCable(Cable):
 
     _CYLINDER_CD = 1.2  # crossflow drag coefficient of a long cylinder
 
-    def __init__(
-        self, diameter: float, buoyancy_per_length: float, *, c_w: float | None = None
-    ):
+    def __init__(self, diameter: float, buoyancy_per_length: float, *, c_w: float | None = None):
         self.diameter = float(diameter)
         self._buoyancy_per_length = float(buoyancy_per_length)
         self._c_w = self._CYLINDER_CD if c_w is None else float(c_w)
@@ -399,9 +395,7 @@ class Geometry:
         path = Path(path)
         lines = path.read_text().splitlines()
         try:
-            start = next(
-                i for i, ln in enumerate(lines) if ln.strip() == "### Modules ###"
-            )
+            start = next(i for i, ln in enumerate(lines) if ln.strip() == "### Modules ###")
         except StopIteration:
             raise ValueError(f"{path}: no '### Modules ###' marker found")
 
@@ -429,10 +423,7 @@ class Geometry:
             xyz = np.array([pos for _, pos in entries])
             floor = xyz[:, 2].min() if z_floor is None else z_floor
             anchor = np.array([xyz[:, 0].mean(), xyz[:, 1].mean(), floor])
-            oms = [
-                SphericalOM(mid, pos, radius=radius, buoyancy=buoyancy)
-                for mid, pos in entries
-            ]
+            oms = [SphericalOM(mid, pos, radius=radius, buoyancy=buoyancy) for mid, pos in entries]
             top = max(oms, key=lambda m: m.position[2])
             b = copy.copy(buoy)
             b.module_id = buoy_id
@@ -507,9 +498,7 @@ class Geometry:
         """String id per module, aligned row-for-row with :meth:`positions`."""
         if not self.strings:
             return np.array([], dtype=int)
-        return np.concatenate(
-            [np.full(s.n_modules, s.string_id) for s in self.strings]
-        )
+        return np.concatenate([np.full(s.n_modules, s.string_id) for s in self.strings])
 
     def displacements(self) -> np.ndarray:
         """Current module positions minus the unperturbed baseline (``(N, 3)``)."""

@@ -27,16 +27,17 @@ from omsway import Buoy, CylindricalCable, Geometry, Solver
 from omsway.currents import CurrentModel
 
 ARCA_GEO = Path(
-    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel"
-    "/prometheus/resources/geofiles/arca.geo"
+    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel/prometheus/resources/geofiles/arca.geo"
 )
 BG = "rgba(0,0,0,0)"  # transparent, so it reads on light and dark backgrounds
 CAMERA = dict(eye=dict(x=1.15, y=1.02, z=0.42))
 SCALE = 2  # device-pixel multiplier: same composition, higher-resolution output
 # matplotlib "winter" (blue -> green), dropping the bluest 15% (sample t in [0.15, 1])
 _w = matplotlib.colormaps["winter"]
-WINTER = [[i / 31, "rgb({},{},{})".format(*(int(255 * c) for c in _w(0.15 + 0.85 * i / 31)[:3]))]
-          for i in range(32)]
+WINTER = [
+    [i / 31, "rgb({},{},{})".format(*(int(255 * c) for c in _w(0.15 + 0.85 * i / 31)[:3]))]
+    for i in range(32)
+]
 
 
 class TravelingWaveCurrent(CurrentModel):
@@ -63,19 +64,41 @@ class TravelingWaveCurrent(CurrentModel):
 
 def figure(line, pos, off, cmax, ranges, aspect):
     lx, ly, lz = line
-    fig = go.Figure([
-        go.Scatter3d(x=lx, y=ly, z=lz, mode="lines", hoverinfo="skip",
-                     line=dict(color="#0e7a58", width=1.5)),
-        go.Scatter3d(x=pos[:, 0], y=pos[:, 1], z=pos[:, 2], mode="markers", hoverinfo="skip",
-                     marker=dict(size=2.4, color=off, colorscale=WINTER, cmin=0.0, cmax=cmax,
-                                 showscale=False)),
-    ])
+    fig = go.Figure(
+        [
+            go.Scatter3d(
+                x=lx,
+                y=ly,
+                z=lz,
+                mode="lines",
+                hoverinfo="skip",
+                line=dict(color="#0e7a58", width=1.5),
+            ),
+            go.Scatter3d(
+                x=pos[:, 0],
+                y=pos[:, 1],
+                z=pos[:, 2],
+                mode="markers",
+                hoverinfo="skip",
+                marker=dict(
+                    size=2.4, color=off, colorscale=WINTER, cmin=0.0, cmax=cmax, showscale=False
+                ),
+            ),
+        ]
+    )
     fig.update_layout(
-        paper_bgcolor=BG, margin=dict(l=0, r=0, t=0, b=0), showlegend=False,
-        scene=dict(bgcolor=BG, aspectmode="manual", aspectratio=aspect, camera=CAMERA,
-                   xaxis=dict(visible=False, range=ranges[0]),
-                   yaxis=dict(visible=False, range=ranges[1]),
-                   zaxis=dict(visible=False, range=ranges[2])),
+        paper_bgcolor=BG,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        scene=dict(
+            bgcolor=BG,
+            aspectmode="manual",
+            aspectratio=aspect,
+            camera=CAMERA,
+            xaxis=dict(visible=False, range=ranges[0]),
+            yaxis=dict(visible=False, range=ranges[1]),
+            zaxis=dict(visible=False, range=ranges[2]),
+        ),
     )
     return fig
 
@@ -101,12 +124,20 @@ def save_transparent_gif(frames, out, duration=42):
     """Assemble RGBA frames into a looping GIF with a transparent background."""
     palettes = []
     for im in frames:
-        p = im.convert("RGB").convert("P", palette=Image.Palette.ADAPTIVE, colors=255,
-                                      dither=Image.Dither.NONE)
+        p = im.convert("RGB").convert(
+            "P", palette=Image.Palette.ADAPTIVE, colors=255, dither=Image.Dither.NONE
+        )
         p.paste(255, im.split()[3].point(lambda a: 255 if a < 128 else 0))  # 1-bit alpha
         palettes.append(p)
-    palettes[0].save(out, save_all=True, append_images=palettes[1:], duration=duration,
-                     loop=0, transparency=255, disposal=2)
+    palettes[0].save(
+        out,
+        save_all=True,
+        append_images=palettes[1:],
+        duration=duration,
+        loop=0,
+        transparency=255,
+        disposal=2,
+    )
 
 
 def main() -> None:
@@ -114,8 +145,11 @@ def main() -> None:
     geo_path = Path(sys.argv[2]) if len(sys.argv) > 2 else ARCA_GEO
 
     geo = Geometry.from_prometheus_geo(
-        geo_path, buoy=Buoy(1350.0, 0.8, 0.25), buoy_gap=38.0,
-        cable=CylindricalCable(0.05, -0.5), z_floor=-3540.0,
+        geo_path,
+        buoy=Buoy(1350.0, 0.8, 0.25),
+        buoy_gap=38.0,
+        cable=CylindricalCable(0.05, -0.5),
+        z_floor=-3540.0,
     )
     solver = Solver(n_nodes=160)
     wave = TravelingWaveCurrent(base=0.06, amplitude=0.05, wavelength=1300.0, period=1.0)

@@ -140,7 +140,7 @@ viz.write_html(viz.plot(geo, title="ARCA @ 0.15 m/s"), "arca_displaced.html")
 |---|---|
 | `omsway.currents` | `CurrentModel` (abstract water-velocity field over position & time), and the built-ins `UniformCurrent` and `DepthProfileCurrent`. |
 | `omsway.geometry` | The detector tree `Geometry → String → Module`, with `Module` subtypes `SphericalOM` (an optical module) and `Buoy`, and a `Cable` (`CylindricalCable`) per string. Loads/saves Prometheus `.geo` files and reports `displacements()` against the nominal baseline. |
-| `omsway.mechanics` | `Solver` — the arc-length force-balance solver — and `StringShape`, its per-string result (bent rope curve, displaced module positions, convergence). |
+| `omsway.solver` | `Solver` — the arc-length force-balance solver — and `StringShape`, its per-string result (bent rope curve, displaced module positions, convergence). |
 | `omsway.viz` | An interactive 3-D plotly view of a displaced detector against its nominal baseline. |
 
 Two ready-to-run scripts:

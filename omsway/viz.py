@@ -109,29 +109,62 @@ def plot(
         (displaced, DISPLACED_COLOR, "displaced"),
     ):
         x, y, z = _polyline(_string_lines(geometry, positions))
-        fig.add_trace(go.Scatter3d(x=x, y=y, z=z, mode="lines", hoverinfo="skip",
-                                   line=dict(color=color, width=LINE_WIDTH), name=name))
+        fig.add_trace(
+            go.Scatter3d(
+                x=x,
+                y=y,
+                z=z,
+                mode="lines",
+                hoverinfo="skip",
+                line=dict(color=color, width=LINE_WIDTH),
+                name=name,
+            )
+        )
 
     if show_axes:
         length = _auto_axis_length(geometry, axis_scale) if axis_length is None else axis_length
         ax_x, ax_y, ax_z = _polyline(_arrow_segments(displaced, axes, length))
-        fig.add_trace(go.Scatter3d(x=ax_x, y=ax_y, z=ax_z, mode="lines", hoverinfo="skip",
-                                   line=dict(color=AXIS_COLOR, width=AXIS_WIDTH), name="tilt axis"))
+        fig.add_trace(
+            go.Scatter3d(
+                x=ax_x,
+                y=ax_y,
+                z=ax_z,
+                mode="lines",
+                hoverinfo="skip",
+                line=dict(color=AXIS_COLOR, width=AXIS_WIDTH),
+                name="tilt axis",
+            )
+        )
 
     sid, mid = geometry.string_ids(), geometry.module_ids()
-    fig.add_trace(go.Scatter3d(
-        x=displaced[:, 0], y=displaced[:, 1], z=displaced[:, 2], mode="markers", name="modules",
-        marker=dict(size=MODULE_SIZE, color=offset, colorscale="Viridis", cmin=0.0,
-                    colorbar=dict(title="displacement<br>[m]")),
-        text=[f"string {int(s)} · module {int(m)}<br>displacement {o:.1f} m"
-              f"<br>tilt {t:.1f}° · yaw {y:.1f}°"
-              for s, m, o, t, y in zip(sid, mid, offset, tilt_deg, yaw_deg)],
-        hoverinfo="text"))
+    fig.add_trace(
+        go.Scatter3d(
+            x=displaced[:, 0],
+            y=displaced[:, 1],
+            z=displaced[:, 2],
+            mode="markers",
+            name="modules",
+            marker=dict(
+                size=MODULE_SIZE,
+                color=offset,
+                colorscale="Viridis",
+                cmin=0.0,
+                colorbar=dict(title="displacement<br>[m]"),
+            ),
+            text=[
+                f"string {int(s)} · module {int(m)}<br>displacement {o:.1f} m"
+                f"<br>tilt {t:.1f}° · yaw {y:.1f}°"
+                for s, m, o, t, y in zip(sid, mid, offset, tilt_deg, yaw_deg)
+            ],
+            hoverinfo="text",
+        )
+    )
 
     fig.update_layout(
         title=dict(text=title),
-        scene=dict(xaxis_title="x [m]", yaxis_title="y [m]", zaxis_title="z [m]",
-                   aspectmode="data"),
+        scene=dict(
+            xaxis_title="x [m]", yaxis_title="y [m]", zaxis_title="z [m]", aspectmode="data"
+        ),
         margin=dict(l=0, r=0, t=40, b=0),
     )
     return fig
