@@ -231,6 +231,22 @@ pre-commit install         # run the hooks on every commit
 pre-commit run --all-files # or check the whole tree now
 ```
 
+## Contributing
+
+Contributions go through a fork and pull request:
+
+1. **Fork** the repository to your own account and **clone** your fork.
+2. Create the environment (`mamba env create -f environment.yml`) and run
+   `pre-commit install` so formatting and linting run on every commit (see
+   [Development](#development)).
+3. **Create a branch** for your change: `git checkout -b my-feature`.
+4. Make your changes and **commit** them on that branch.
+5. **Push** the branch to your fork and **open a pull request** against `main`,
+   describing what changed and why.
+
+Please keep pull requests focused, and make sure `pre-commit run --all-files`
+passes before opening one.
+
 ## References
 
 - S. Adrián-Martínez et al. (ANTARES), *"The positioning system of the ANTARES
