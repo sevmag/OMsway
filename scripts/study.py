@@ -1,7 +1,10 @@
 """Displacement sweep: bend ARCA under a range of uniform currents and write the
 displaced geometries for re-simulation.
 
-Run in the omsway env:  python scripts/study.py [path/to/arca.geo]
+Run in the omsway env:  python scripts/study.py <path/to/detector.geo>
+
+The detector geofile is a required argument (Prometheus ships them under
+``resources/geofiles/``); the ARCA hardware constants below are inlined.
 
 Each current speed loads the nominal ARCA geometry, solves the displaced shape,
 and writes the displaced .geo to data/displaced/. ARCA hardware constants are
@@ -18,9 +21,6 @@ import numpy as np
 
 from omsway import Buoy, CylindricalCable, Geometry, Solver, UniformCurrent
 
-ARCA_GEO = Path(
-    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel/prometheus/resources/geofiles/arca.geo"
-)
 OUTDIR = Path(__file__).resolve().parent.parent / "data" / "displaced"
 SPEEDS_CM = (3, 6, 10, 15)
 
@@ -33,7 +33,9 @@ Z_FLOOR = -3540.0
 
 
 def main() -> None:
-    geo_path = Path(sys.argv[1]) if len(sys.argv) > 1 else ARCA_GEO
+    if len(sys.argv) < 2:
+        sys.exit("usage: python scripts/study.py <path/to/detector.geo>")
+    geo_path = Path(sys.argv[1])
     OUTDIR.mkdir(parents=True, exist_ok=True)
     solver = Solver()
     print(f"{'speed':>7} {'max defl':>10} {'median':>9}  output")

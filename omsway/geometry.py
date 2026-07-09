@@ -20,18 +20,6 @@ from pathlib import Path
 
 import numpy as np
 
-# Column schema of the GraphNeT/NuBench per-sensor geometry tables.
-XYZ = ["sensor_pos_x", "sensor_pos_y", "sensor_pos_z"]
-STRING_COL = "sensor_string_id"
-SENSOR_COL = "sensor_id"
-
-# Known geometry tables (vertical-string detectors share this loader).
-GEOMETRY_TABLE_DIR = Path("/n/home12/smagel/data/graphnet/data/geometry_tables")
-NAMED_GEOMETRIES = {
-    "arca": GEOMETRY_TABLE_DIR / "nubench" / "flower_l.parquet",
-    "orca": GEOMETRY_TABLE_DIR / "nubench" / "flower_s.parquet",
-}
-
 
 class Module(ABC):
     """A single device on a string: an optical module, a buoy, or anything else.

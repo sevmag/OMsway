@@ -15,8 +15,8 @@ reaches tens of metres.
 
 Reconstruction and simulation frameworks usually assume the detector geometry is
 static and perfectly known. OMsway computes the real, current-driven shape of
-each string and produces the displaced module positions, so you can study how
-that mismatch affects event reconstruction.
+each string and produces the displaced module positions and orientations, so you
+can study how that mismatch affects event reconstruction.
 
 <sub><em>(Animation, right: a stylized decorative render — see <a href="art/"><code>art/</code></a>; the physics and validation live in <a href="scripts/"><code>scripts/</code></a>.)</em></sub>
 
@@ -69,6 +69,31 @@ The solver reproduces this exactly — one of the checks in `scripts/validate.py
 The approach follows the ANTARES line-shape / detector-positioning model
 ([arXiv:1202.3894](https://arxiv.org/abs/1202.3894)), also used by KM3NeT.
 
+## Module orientation: tilt and torsion
+
+A tilted, rotated optical module needs more than a position for a faithful
+optical simulation — it needs its full orientation. OMsway tracks two independent
+degrees of freedom:
+
+- **Tilt** — the module's symmetry axis. A module is clamped to the rope, so it
+  tilts with the local line tangent; the solve therefore sets each `module.axis`
+  (a unit vector, with angle-from-vertical `module.tilt`) directly from the shape
+  it already computes. Tilt is *predicted* — near-zero just under the buoy,
+  largest near the anchor, leaning downstream.
+- **Torsion** — the roll about that axis (the DOM heading/yaw). A current exerts
+  no torque about a symmetric module's axis, and a KM3NeT two-rope string is
+  torsionally stiff, so the sway solve says nothing about it; in real detectors
+  it is fixed at deployment and measured in situ by the module compass (to a few
+  degrees). OMsway supplies it separately through a `TorsionModel` that sets
+  `module.torsion` as a per-string constant + yaw model + random scatter — the
+  built-in `RandomScatter` reproduces the small per-module heading spread a
+  compass sees.
+
+`module.reference_vector()` combines the two into the DOM heading marker: the
+body `+x` direction carried through the tilt and rolled by the torsion. These
+orientations feed PPC's next-gen mode as `cx.dat` (per-DOM tilt) and `dx.dat`
+(per-DOM cable azimuth); see `Geometry.write_ppc_geometry`.
+
 ## Installation
 
 The dependencies live in a conda environment defined by `environment.yml`
@@ -104,8 +129,10 @@ geo = Geometry.from_prometheus_geo(
 )
 
 # 2. Bend it under a current (0.15 m/s toward +x). solve() writes the displaced
-#    positions back onto the geometry and returns per-string diagnostics.
-Solver().solve(geo, UniformCurrent(speed=0.15, azimuth_deg=0.0))
+#    positions and each module's tilt back onto the geometry, and returns
+#    per-string diagnostics.
+current = UniformCurrent(speed=0.15, azimuth_deg=0.0)
+Solver().solve(geo, current)
 
 # 3. Read the displacement field, or write the displaced detector back out.
 offset = np.linalg.norm(geo.displacements(), axis=1)   # per-module displacement [m]
@@ -134,14 +161,36 @@ from omsway import viz
 viz.write_html(viz.plot(geo, title="ARCA @ 0.15 m/s"), "arca_displaced.html")
 ```
 
+The view draws each module's tilt and heading as small arrows, with checkboxes in
+the page to toggle them on and off.
+
+### Orientation output for PPC
+
+The solve already set each module's **tilt** (`module.axis`). Assign the
+**torsion** (the roll/heading the solve leaves open) and write the geometry files
+PPC's next-gen mode reads for tilted, rotated modules:
+
+```python
+from omsway import RandomScatter
+
+RandomScatter(sigma=np.radians(3.0), seed=0).apply(geo, current)  # ~3° heading spread
+
+paths = geo.write_ppc_geometry("ppc_inputs/")
+# ppc_inputs/geometry.geo · cx.dat (per-DOM tilt) · dx.dat (per-DOM cable azimuth)
+```
+
+In a Prometheus run the `.geo` is the geofile and `cx.dat`/`dx.dat` go in the
+`ppctables` directory PPC reads.
+
 ## What's in the package
 
 | Module | Contents |
 |---|---|
 | `omsway.currents` | `CurrentModel` (abstract water-velocity field over position & time), and the built-ins `UniformCurrent` and `DepthProfileCurrent`. |
-| `omsway.geometry` | The detector tree `Geometry → String → Module`, with `Module` subtypes `SphericalOM` (an optical module) and `Buoy`, and a `Cable` (`CylindricalCable`) per string. Loads/saves Prometheus `.geo` files and reports `displacements()` against the nominal baseline. |
-| `omsway.solver` | `Solver` — the arc-length force-balance solver — and `StringShape`, its per-string result (bent rope curve, displaced module positions, convergence). |
-| `omsway.viz` | An interactive 3-D plotly view of a displaced detector against its nominal baseline. |
+| `omsway.geometry` | The detector tree `Geometry → String → Module`, with `Module` subtypes `SphericalOM` (an optical module) and `Buoy`, and a `Cable` (`CylindricalCable`) per string. Each module carries its orientation — `axis`/`tilt`, `torsion`, and `reference_vector()`. Loads/saves Prometheus `.geo` files, reports `displacements()`, and writes the PPC orientation inputs (`to_cx_dat`, `to_dx_dat`, `write_ppc_geometry`). |
+| `omsway.solver` | `Solver` — the arc-length force-balance solver — and `StringShape`, its per-string result (bent rope curve, displaced positions, convergence). `solve()` writes back each module's displaced position and its tilt (`axis`). |
+| `omsway.torsion` | `TorsionModel` (abstract: per-string constant + yaw model + random scatter) and `RandomScatter`, which assign each module's `torsion` — the DOM roll/heading the sway solve does not determine. |
+| `omsway.viz` | An interactive 3-D plotly view of a displaced detector against its nominal baseline, with per-module tilt and heading arrows and in-page on/off toggles for them. |
 
 Two ready-to-run scripts:
 
@@ -163,10 +212,24 @@ quadratic (`v²`) scaling of deflection with current speed.
   assumes a seabed-anchored string held taut by a top buoy.
 - **Horizontal drag, vertical buoyancy.** Abyssal currents are nearly horizontal,
   so drag bends the string sideways while buoyancy sets the restoring tension.
+- **Orientation is tilt + torsion.** The solve sets each module's tilt (its axis
+  follows the rope tangent); the torsion (roll/heading) is *not* determined by the
+  sway — a current exerts no torque about a symmetric module's axis — so it is
+  supplied by a `TorsionModel` and, in reality, measured by the module compass.
 - **Drag magnitude is a calibration knob.** `Solver(drag_scale=…)` scales all
   drag terms; with `drag_scale = 1` (the default) the *shape* is physical but the
   absolute deflection should be calibrated against a known measurement for a
   given detector.
+
+## Development
+
+Linting and formatting run through [ruff](https://docs.astral.sh/ruff/) on
+[pre-commit](https://pre-commit.com/). Once the environment is active:
+
+```bash
+pre-commit install         # run the hooks on every commit
+pre-commit run --all-files # or check the whole tree now
+```
 
 ## References
 
@@ -176,5 +239,8 @@ quadratic (`v²`) scaling of deflection with current speed.
 - KM3NeT Collaboration, *"Sensitivity of the KM3NeT/ARCA detector"*,
   [arXiv:2007.16090](https://arxiv.org/abs/2007.16090) — ARCA geometry and the
   benchmark string deflection.
+- KM3NeT Collaboration, *"KM3NeT Detection Unit Line Fit reconstruction using
+  positioning sensors data"*, [arXiv:2109.04914](https://arxiv.org/abs/2109.04914)
+  — the acoustic + compass model behind per-module position and orientation.
 - [Prometheus](https://github.com/Harvard-Neutrino/prometheus) — the simulation
   package whose `.geo` detector files OMsway reads and writes.

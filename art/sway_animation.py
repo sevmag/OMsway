@@ -9,7 +9,11 @@ anything. For the actual physics and validation see ``scripts/study.py`` and
 Needs plotly + kaleido (kaleido drives a headless Chromium, so give it a few GB
 of memory for the 60-frame render). Run:
 
-    python art/sway_animation.py [out.gif] [arca.geo]
+    python art/sway_animation.py [detector.geo] [out.gif]
+
+Both arguments are optional: the geometry defaults to the bundled ARCA layout
+(``resources/geometries/arca.geo``, resolved relative to this file so it works
+from any working directory) and the output to ``art/sway.gif``.
 """
 
 from __future__ import annotations
@@ -26,9 +30,8 @@ from PIL import Image
 from omsway import Buoy, CylindricalCable, Geometry, Solver
 from omsway.currents import CurrentModel
 
-ARCA_GEO = Path(
-    "/n/holylfs05/LABS/arguelles_delgado_lab/Everyone/smagel/prometheus/resources/geofiles/arca.geo"
-)
+# Bundled ARCA geometry, resolved relative to this file so it works from anywhere.
+DEFAULT_GEO = Path(__file__).resolve().parent.parent / "resources" / "geometries" / "arca.geo"
 BG = "rgba(0,0,0,0)"  # transparent, so it reads on light and dark backgrounds
 CAMERA = dict(eye=dict(x=1.15, y=1.02, z=0.42))
 SCALE = 2  # device-pixel multiplier: same composition, higher-resolution output
@@ -141,8 +144,8 @@ def save_transparent_gif(frames, out, duration=42):
 
 
 def main() -> None:
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("sway.gif")
-    geo_path = Path(sys.argv[2]) if len(sys.argv) > 2 else ARCA_GEO
+    geo_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_GEO
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).with_name("sway.gif")
 
     geo = Geometry.from_prometheus_geo(
         geo_path,
